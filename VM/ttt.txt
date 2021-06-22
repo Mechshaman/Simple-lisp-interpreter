@@ -1,0 +1,134 @@
+%type <ival> EXPLIST EXP VARIABLE NUM-OP LOGICAL-OP FUN-EXP FUN-CALL IF-EXP
+%type <ival> PLUS MINUS MULTIPLY DIVIDE MODULUS GREATER SMALLER EQUAL AND-OP OR-OP NOT-OP
+%%
+PROGRAM : STMT
+;
+STMT : EXP | DEF-STMT | PRINT-STMT
+;
+PRINT-STMT : Lpa print-num EXP Rpa {cout << $3 <<endl;}
+| Lpa print-bool EXP Rpa {cout << $3 <<endl;}
+;
+EXPLIST : EXP | EXPLIST EXP
+; 
+EXP : bool-val {$$ = $1;}
+| num {$$ = $1;}
+| VARIABLE | NUM-OP | LOGICAL-OP | FUN-EXP | FUN-CALL | IF-EXP
+;
+NUM-OP : PLUS | MINUS | MULTIPLY | DIVIDE | MODULUS | GREATER | SMALLER | EQUAL
+;
+PLUS : Lpa pls EXP EXPLIST Rpa {$$ = $3 + $4;}
+;
+MINUS : Lpa min EXP EXP Rpa {$$ = $3 - $4;}
+;
+MULTIPLY : Lpa mul EXP EXPLIST Rpa {$$ = $3 * $4;}
+;
+DIVIDE : Lpa div EXP EXP Rpa {$$ = $3 / $4;}
+;
+MODULUS : Lpa mod EXP EXP Rpa {$$ = $3 % $4;}
+;
+GREATER : Lpa gre EXP EXP Rpa 
+;
+SMALLER : Lpa sma EXP EXP Rpa 
+;
+EQUAL : Lpa eq EXP EXPLIST Rpa
+;
+LOGICAL-OP : AND-OP | OR-OP | NOT-OP
+;
+AND-OP : Lpa andd EXP EXPLIST Rpa
+;
+OR-OP : Lpa orr EXP EXPLIST Rpa
+;
+NOT-OP : Lpa nott EXP Rpa
+;
+DEF-STMT : Lpa def VARIABLE EXP Rpa
+;
+VARIABLE : id
+;
+FUN-EXP : Lpa fun FUN-IDs FUN-BODY Rpa
+;
+IDLIST : id | IDLIST id
+;
+FUN-IDs : Lpa IDLIST Rpa
+;
+FUN-BODY : EXP
+;
+FUN-CALL : Lpa FUN-EXP PARAMLIST Rpa | Lpa FUN-NAME PARAMLIST Rpa
+;
+PARAMLIST : PARAM | PARAM PARAMLIST
+;
+PARAM : EXP
+;
+LAST-EXP : EXP
+;
+FUN-NAME : id
+;
+IF-EXP : Lpa iff TEST-EXP THEN-EXP ELSE-EXP Rpa
+;
+TEST-EXP : EXP
+;
+THEN-EXP : EXP
+;
+ELSE-EXP : EXP
+
+
+
+
+%{
+#include <iostream>
+#include <stdio.h>
+#include <string.h>
+#include <string>
+using namespace std;
+void yyerror(const char *message);
+%}
+%union {
+int ival;
+string sid;
+}
+%token <ival> num bool-val
+%token <sid> id
+%token Lpa Rpa
+%token eq
+%token pls min
+%token mul div mod
+%token gre sma
+%token andd orr nott
+%token def fun
+%token iff print-num print-bool
+%type <ival> EXPLIST EXP NUM-OP
+%type <ival> PLUS MINUS MULTIPLY DIVIDE MODULUS 
+%%
+PROGRAM : STMT
+;
+STMT : EXP | PRINT-STMT
+;
+PRINT-STMT : Lpa print-num EXP Rpa {cout << $3 <<endl;}
+| Lpa print-bool EXP Rpa {cout << $3 <<endl;}
+;
+EXPLIST : EXP | EXPLIST EXP
+; 
+EXP : bool-val {$$ = $1;}
+| num {$$ = $1;}
+| NUM-OP
+;
+NUM-OP : PLUS | MINUS | MULTIPLY | DIVIDE | MODULUS
+;
+PLUS : Lpa pls EXP EXPLIST Rpa {$$ = $3 + $4;}
+;
+MINUS : Lpa min EXP EXP Rpa {$$ = $3 - $4;}
+;
+MULTIPLY : Lpa mul EXP EXPLIST Rpa {$$ = $3 * $4;}
+;
+DIVIDE : Lpa div EXP EXP Rpa {$$ = $3 / $4;}
+;
+MODULUS : Lpa mod EXP EXP Rpa {$$ = $3 % $4;}
+;
+%%
+void yyerror (const char *message){
+    printf ("%s \n",message);
+    exit(0);
+}
+int main() {
+yyparse();
+return 0;
+}
