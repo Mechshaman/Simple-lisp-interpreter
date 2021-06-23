@@ -1,16 +1,30 @@
 %{
-#include <stdio.h>
-#include <string.h>
-void yyerror(const char *message);
-int temp;
-int temp2;
+    #include <stdio.h>
+    #include <string.h>
+    #include <stdlib.h>
+    void yyerror(const char *message);
+    int i;
+    int j;
+    struct Node {
+        int data;
+        struct Node* head;
+        struct Node* next;
+    };
+    struct Node* newNode(int data) {
+        struct Node* node = (struct Node *) malloc(sizeof(struct Node));
+        node->data = data;
+        return node;
+    }
+    struct Node* nextNode(struct Node* current) {
+        struct Node* next_node = current->next;
+        free(current);
+        return next_node;
+    }
 %}
+
 %union {
-int ival;
-struct def{
-int x[100];
-int n;
-} arr;
+    int ival;
+    struct Node* arr;
 }
 %token <ival> num boolval
 %token <ival> id
@@ -27,61 +41,100 @@ int n;
 %type <arr> EXPLIST
 
 %%
-PROGRAM : STMT
-;
-STMT : EXP | PRINTSTMT | STMT EXP | STMT PRINTSTMT
-;
-PRINTSTMT : Lpa printnum EXP Rpa {printf("%d\n",$3);}
-| Lpa printbool EXP Rpa {if($3==0){printf("#f\n");}else{printf("#t\n");};}
-;
-EXPLIST : EXP {$$.x[0] = $1;$$.n = 1;}
-| EXPLIST EXP {$$.x[$1.n] = $2;$$.n = $1.n + 1;}
-; 
-EXP : boolval {$$ = $1;}
-| num {$$ = $1;}
-| NUMOP
-| LOGICALOP
-| IFEXP
-;
-NUMOP : PLUS | MINUS | MULTIPLY | DIVIDE | MODULUS | GREATER | SMALLER | EQUAL
-;
-PLUS : Lpa pls EXP EXPLIST Rpa {$$ = $3;for(temp = 0 ; temp < $4.n ; temp++){$$ += $4.x[temp];};}
-;
-MINUS : Lpa min EXP EXP Rpa {$$ = $3 - $4;}
-;
-MULTIPLY : Lpa mul EXP EXPLIST Rpa {$$ = $3;for(temp = 0 ; temp < $4.n ; temp++){$$ *= $4.x[temp];};}
-;
-DIVIDE : Lpa divv EXP EXP Rpa {$$ = $3 / $4;}
-;
-MODULUS : Lpa mod EXP EXP Rpa {$$ = $3 % $4;}
-;
-GREATER : Lpa gre EXP EXP Rpa {if($3>$4){$$ = 1;}else{$$ = 0;};}
-;
-SMALLER : Lpa sma EXP EXP Rpa {if($3<$4){$$ = 1;}else{$$ = 0;};}
-;
-EQUAL : Lpa eq EXP EXPLIST Rpa {temp2=1 ; for(temp = 0 ; temp < $4.n ; temp++){if($4.x[temp]!=$3){temp2=0;};} ; if(temp2==1){$$ = 1;}else{$$ = 0;};}
-;
-LOGICALOP : ANDOP | OROP | NOTOP
-;
-ANDOP : Lpa andd EXP EXPLIST Rpa {if($3==0){temp2=0;}else{temp2=1;} ; for(temp = 0 ; temp < $4.n ; temp++){if($4.x[temp]==0){temp2=0;};} ; if(temp2==1){$$ = 1;}else{$$ = 0;};}
-;
-OROP : Lpa orr EXP EXPLIST Rpa {if($3==0){temp2=0;}else{temp2=1;} ; for(temp = 0 ; temp < $4.n ; temp++){if($4.x[temp]==1){temp2=1;};} ; if(temp2==1){$$ = 1;}else{$$ = 0;};}
-;
-NOTOP : Lpa nott EXP Rpa {if($3==0){$$ = 1;}else{$$ = 0;};}
-;
-IFEXP : Lpa iff TESTEXP THENEXP ELSEEXP Rpa {if($3==1){$$ = $4;}else{$$ = $5;};}
-;
-TESTEXP : EXP
-;
-THENEXP : EXP
-;
-ELSEEXP : EXP
+PROGRAM     : STMT
+            ;
+STMT        : EXP | PRINTSTMT | STMT EXP | STMT PRINTSTMT
+            ;
+PRINTSTMT   : Lpa printnum EXP Rpa      { printf("%d\n",$3); }
+            | Lpa printbool EXP Rpa     { if($3 == 0) { printf("#f\n"); } else { printf("#t\n"); }; }
+            ;
+EXPLIST     : EXP           { 
+                $$ = newNode($1);
+                $$->next = NULL;
+                $$->head = $$;
+            }
+            | EXPLIST EXP   { 
+                $$ = newNode($2);
+                $$->next = NULL;
+                $$->head = $1->head;
+                $1->next = $$;
+            }
+            ; 
+EXP         : boolval       { $$ = $1; }
+            | num           { $$ = $1; }
+            | NUMOP 
+            | LOGICALOP
+            | IFEXP
+            ;
+NUMOP       : PLUS | MINUS | MULTIPLY | DIVIDE | MODULUS | GREATER | SMALLER | EQUAL
+            ;
+PLUS        : Lpa pls EXP EXPLIST Rpa   { 
+                $$ = $3; 
+                 
+                for (struct Node* iter_node = $4->head; iter_node != NULL ; iter_node = nextNode(iter_node)) { 
+                    $$ += iter_node->data; 
+                }; 
+            }
+            ;
+MINUS       : Lpa min EXP EXP Rpa       { $$ = $3 - $4; }
+            ;
+MULTIPLY    : Lpa mul EXP EXPLIST Rpa   { 
+                $$ = $3; 
+                 
+                for (struct Node* iter_node = $4->head; iter_node != NULL ; iter_node = nextNode(iter_node)) { 
+                    $$ *= iter_node->data; 
+                };  
+            }
+            ;
+DIVIDE      : Lpa divv EXP EXP Rpa      { $$ = $4 == 0 ? 0 : $3 / $4; }
+            ;
+MODULUS     : Lpa mod EXP EXP Rpa       { $$ = $4 == 0 ? 0 : $3 % $4; }
+            ;
+GREATER     : Lpa gre EXP EXP Rpa       { if($3 > $4) { $$ = 1; } else { $$ = 0; }; }
+            ;
+SMALLER     : Lpa sma EXP EXP Rpa       { if($3 < $4) { $$ = 1; } else { $$ = 0; }; }
+            ;
+EQUAL       : Lpa eq EXP EXPLIST Rpa    { 
+                $$ = 1; 
+                 
+                for (struct Node* iter_node = $4->head; iter_node != NULL ; iter_node = nextNode(iter_node)) { 
+                    if ($3 != iter_node->data) $$ = 0; 
+                }; 
+            }
+            ;
+LOGICALOP   : ANDOP | OROP | NOTOP
+            ;
+ANDOP       : Lpa andd EXP EXPLIST Rpa  { 
+                $$ = $3; 
+                 
+                for (struct Node* iter_node = $4->head; iter_node != NULL ; iter_node = nextNode(iter_node)) { 
+                    $$ &= iter_node->data; 
+                };  
+            }
+            ;
+OROP        : Lpa orr EXP EXPLIST Rpa   { 
+                $$ = $3; 
+                 
+                for (struct Node* iter_node = $4->head; iter_node != NULL ; iter_node = nextNode(iter_node)) { 
+                    $$ |= iter_node->data; 
+                };  
+            }
+            ;
+NOTOP       : Lpa nott EXP Rpa          { if($3 == 0) { $$ = 1; } else { $$ = 0; }; }
+            ;
+IFEXP       : Lpa iff TESTEXP THENEXP ELSEEXP Rpa  { if($3 == 1) { $$ = $4; } else { $$ = $5; }; }
+            ;
+TESTEXP     : EXP
+            ;
+THENEXP     : EXP
+            ;
+ELSEEXP     : EXP
 %%
-void yyerror (const char *message)
-{
-fprintf (stderr, "%s\n",message);
+
+void yyerror (const char *message) {
+    fprintf (stderr, "%s\n",message);
 }
 int main() {
-yyparse();
-return 0;
+    yyparse();
+    return 0;
 }
